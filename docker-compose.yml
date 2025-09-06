@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:7.0
+    container_name: ai-support-mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password123
+      MONGO_INITDB_DATABASE: ai-support
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - ai-support-network
+
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: ai-support-server
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      - NODE_ENV=production
+      - PORT=5000
+      - MONGODB_URI=mongodb://admin:password123@mongodb:27017/ai-support?authSource=admin
+      - JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+      - APP_URL=http://localhost:80
+    depends_on:
+      - mongodb
+    networks:
+      - ai-support-network
+
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    container_name: ai-support-client
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - server
+    networks:
+      - ai-support-network
+
+volumes:
+  mongodb_data:
+
+networks:
+  ai-support-network:
+    driver: bridge
