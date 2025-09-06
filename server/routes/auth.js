@@ -1,107 +1,64 @@
 const express = require("express");
 const jwt = require("jsonwebtoken");
+const bcrypt = require("bcryptjs");
 const User = require("../models/User");
 const { authenticateToken } = require("../middleware/auth");
 
 const router = express.Router();
 
-// genrating JWT token
+// ---------------- Helper ----------------
 const generateToken = (userId) => {
-  return jwt.sign({ userId }, process.env.JWT_SECRET, {
-    expiresIn: "7d",
+  return jwt.sign({ userId }, process.env.JWT_SECRET || "your-secret-key", {
+    expiresIn: "1h",
   });
 };
 
-// Signup route
+// ---------------- Signup ----------------
 router.post("/signup", async (req, res) => {
   try {
     const { username, email, password } = req.body;
-
-    if (!username || !email || !password) {
-      return res.status(400).json({ message: "All fields are required" });
-    }
-
-    if (password.length < 6) {
-      return res
-        .status(400)
-        .json({ message: "Password must be at least 6 chars" });
-    }
-
-    // checking if user already exists
-    const existingUser = await User.findOne({
-      $or: [{ email }, { username }],
-    });
+    const existingUser = await User.findOne({ email });
 
     if (existingUser) {
-      return res
-        .status(400)
-        .json({ message: "User already exists with this email or username" });
+      return res.status(400).json({ message: "User already exists" });
     }
 
-    // Create new user
-    const user = new User({ username, email, password });
-    await user.save();
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const newUser = new User({ username, email, password: hashedPassword });
+    await newUser.save();
 
-    // generate token
-    const token = generateToken(user._id);
-
-    res.status(201).json({
-      message: "User created successfully",
-      token,
-      user: {
-        id: user._id,
-        username: user.username,
-        email: user.email,
-      },
-    });
+    const token = generateToken(newUser._id);
+    res.status(201).json({ token });
   } catch (error) {
     console.error("Signup error:", error);
-    res.status(500).json({ message: "Server error during signup" });
+    res.status(500).json({ message: "Server error" });
   }
 });
 
-// Login route
+// ---------------- Login ----------------
 router.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
-
-    if (!email || !password) {
-      return res
-        .status(400)
-        .json({ message: "Email and password are required" });
-    }
-
-    // Find user by email
     const user = await User.findOne({ email });
+
     if (!user) {
-      return res.status(401).json({ message: "Invalid credentials" });
+      return res.status(400).json({ message: "Invalid email or password" });
     }
 
-    // Check password
-    const isPasswordValid = await user.comparePassword(password);
-    if (!isPasswordValid) {
-      return res.status(401).json({ message: "Invalid credentials" });
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(400).json({ message: "Invalid email or password" });
     }
 
-    // Generate token
     const token = generateToken(user._id);
-
-    res.json({
-      message: "Login successful",
-      token,
-      user: {
-        id: user._id,
-        username: user.username,
-        email: user.email,
-      },
-    });
+    res.json({ token });
   } catch (error) {
     console.error("Login error:", error);
-    res.status(500).json({ message: "Server error during login" });
+    res.status(500).json({ message: "Server error" });
   }
 });
 
-// getting current user profile
+// ---------------- Profile ----------------
 router.get("/profile", authenticateToken, async (req, res) => {
   try {
     res.json({
@@ -117,9 +74,16 @@ router.get("/profile", authenticateToken, async (req, res) => {
   }
 });
 
-// logout route (client-side token removal)
-router.post("/logout", authenticateToken, (req, res) => {
-  res.json({ message: "Logout successful" });
+// ---------------- Logout ----------------
+router.post("/logout", (req, res) => {
+  try {
+    // In JWT, logout is frontend-only (remove token from client/localStorage).
+    // If you want blacklist tokens, you'd need Redis or DB.
+    res.json({ message: "Logged out successfully (client must clear token)" });
+  } catch (error) {
+    console.error("Logout error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
 });
 
 module.exports = router;
