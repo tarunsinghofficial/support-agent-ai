@@ -11,6 +11,7 @@ const Chat = () => {
   const [showChatList, setShowChatList] = useState(false);
   const messagesEndRef = useRef(null);
   const { user, logout } = useAuth();
+  const API_BASE_URL = import.meta.env.VITE_API_URL || "";
 
   // Scroll to bottom when new messages arrive
   const scrollToBottom = () => {
@@ -34,7 +35,7 @@ const Chat = () => {
         user,
         token: localStorage.getItem("token"),
       });
-      const response = await axios.get("/api/chat/chats");
+      const response = await axios.get(`${API_BASE_URL}/api/chat/chats`);
       setChats(response.data.chats);
     } catch (error) {
       console.error("Error loading chats:", error);
@@ -48,7 +49,9 @@ const Chat = () => {
 
   const loadChatHistory = async (chatId) => {
     try {
-      const response = await axios.get(`/api/chat/history/${chatId}`);
+      const response = await axios.get(
+        `${API_BASE_URL}/api/chat/history/${chatId}`
+      );
       setMessages(response.data.chat.messages);
       setCurrentChatId(chatId);
       setShowChatList(false);
@@ -80,7 +83,7 @@ const Chat = () => {
     setMessages((prev) => [...prev, newUserMessage]);
 
     try {
-      const response = await axios.post("/api/chat/send", {
+      const response = await axios.post(`${API_BASE_URL}/api/chat/send`, {
         message: userMessage,
         chatId: currentChatId,
       });
@@ -125,13 +128,13 @@ const Chat = () => {
             <h2 className="text-lg font-semibold">Chat History</h2>
             <button
               onClick={startNewChat}
-              className="px-3 py-1 bg-primary-600 text-white rounded text-sm hover:bg-primary-700"
+              className="bg-primary-600 hover:bg-primary-700 px-3 py-1 text-sm text-white rounded"
             >
               New Chat
             </button>
           </div>
         </div>
-        <div className="overflow-y-auto h-full pb-20">
+        <div className="h-full pb-20 overflow-y-auto">
           {chats.map((chat) => (
             <div
               key={chat.id}
@@ -142,8 +145,8 @@ const Chat = () => {
                   : ""
               }`}
             >
-              <div className="font-medium text-sm truncate">{chat.title}</div>
-              <div className="text-xs text-gray-500 mt-1">
+              <div className="text-sm font-medium truncate">{chat.title}</div>
+              <div className="mt-1 text-xs text-gray-500">
                 {chat.messageCount} messages • {formatTime(chat.updatedAt)}
               </div>
             </div>
@@ -152,14 +155,14 @@ const Chat = () => {
       </div>
 
       {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex flex-col flex-1">
         {/* Header */}
-        <div className="bg-white shadow-sm border-b p-4">
+        <div className="p-4 bg-white border-b shadow-sm">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <button
                 onClick={() => setShowChatList(!showChatList)}
-                className="p-2 hover:bg-gray-100 rounded"
+                className="hover:bg-gray-100 p-2 rounded"
               >
                 <svg
                   className="w-5 h-5"
@@ -183,7 +186,7 @@ const Chat = () => {
               </span>
               <button
                 onClick={logout}
-                className="px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700"
+                className="hover:bg-red-700 px-3 py-1 text-sm text-white bg-red-600 rounded"
               >
                 Logout
               </button>
@@ -192,11 +195,11 @@ const Chat = () => {
         </div>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        <div className="flex-1 p-4 space-y-4 overflow-y-auto">
           {messages.length === 0 ? (
-            <div className="text-center text-gray-500 mt-20">
-              <div className="text-6xl mb-4">🤖</div>
-              <h3 className="text-xl font-medium mb-2">
+            <div className="mt-20 text-center text-gray-500">
+              <div className="mb-4 text-6xl">🤖</div>
+              <h3 className="mb-2 text-xl font-medium">
                 Welcome to AI Support!
               </h3>
               <p>Start a conversation by typing your message below.</p>
@@ -230,9 +233,9 @@ const Chat = () => {
           )}
           {loading && (
             <div className="flex justify-start">
-              <div className="bg-white text-gray-800 shadow-sm border px-4 py-2 rounded-lg">
+              <div className="px-4 py-2 text-gray-800 bg-white border rounded-lg shadow-sm">
                 <div className="flex items-center space-x-2">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-600"></div>
+                  <div className="animate-spin border-primary-600 w-4 h-4 border-b-2 rounded-full"></div>
                   <span className="text-sm">AI is typing...</span>
                 </div>
               </div>
@@ -242,20 +245,20 @@ const Chat = () => {
         </div>
 
         {/* Message Input */}
-        <div className="bg-white border-t p-4">
+        <div className="p-4 bg-white border-t">
           <form onSubmit={sendMessage} className="flex space-x-2">
             <input
               type="text"
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               placeholder="Type your message..."
-              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              className="focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent flex-1 px-3 py-2 border border-gray-300 rounded-lg"
               disabled={loading}
             />
             <button
               type="submit"
               disabled={loading || !message.trim()}
-              className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed px-4 py-2 text-white rounded-lg"
             >
               Send
             </button>
